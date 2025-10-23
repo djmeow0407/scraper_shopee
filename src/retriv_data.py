@@ -25,6 +25,18 @@ class ProductScraper:
         self.scraped_links = set()
         self._setup_logging()
         self._load_existing_data()
+        self.category_info = None
+        if self.category:
+            try:
+                import csv
+                with open("shopee_categories.csv", "r", encoding="utf-8") as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        if row.get("ma_nganh") == self.category:
+                            self.category_info = row
+                            break
+            except:
+                self.category_info = None
 
     def _setup_logging(self):
         logging.basicConfig(
@@ -77,54 +89,77 @@ class ProductScraper:
 
     def _get_products(self, driver):
         products_xpath = '//*[@id="main"]/div/div[2]/div/div/div/div/div/div[2]/section/ul'
-        try:
-            container = driver.find_element(By.XPATH, products_xpath)
-            items = container.find_elements(By.XPATH, './/li')
-        except NoSuchElementException:
-            logging.warning("Product container not found.")
-            return []
         products = []
-        for idx, li in enumerate(items):
-            if idx >= self.num_products:
-                break
+
+        products_per_page = 60
+        total_pages = -(-self.num_products // products_per_page)
+
+        logging.info(f"Total pages to scrape: {total_pages}")
+
+        for page in range(total_pages):
+            search_url = f"https://shopee.vn/search?keyword={re.sub(r'\s+', '%20', self.keyword.strip())}&page={page}&sortBy={self.sort_by}"
+            logging.info(f"Loading page {page+1}/{total_pages}: {search_url}")
+
+            driver.get(search_url)
+            time.sleep(4)
+            self._wait_for_captcha(driver)
+            driver.implicitly_wait(3)
+
             try:
-                link = li.find_element(By.XPATH, './/a[@class="contents"]').get_attribute("href")
-            except:
-                link = ""
-            
-            if link and link in self.scraped_links:
-                logging.info(f"Skipping already scraped product: {link}")
+                container = driver.find_element(By.XPATH, products_xpath)
+                items = container.find_elements(By.XPATH, './/li')
+            except NoSuchElementException:
+                logging.warning(f"Product container not found on page {page+1}. Skipping.")
                 continue
-            
-            try:
-                name_elem = li.find_element(By.XPATH, './/div[contains(@class, "line-clamp-2")]')
-                name = driver.execute_script("return arguments[0].textContent;", name_elem).strip()
-            except:
-                name = ""
-            try:
-                price = li.find_element(By.XPATH, './/div[@class="truncate flex items-baseline"]').text
-            except:
-                price = ""
-            try:
-                rating = li.find_element(By.XPATH, './/div[@class="text-shopee-black87 text-xs/sp14 flex-none"]').text
-            except:
-                rating = ""
-            try:
-                location = li.find_element(By.XPATH, './/div[@class="flex-shrink min-w-0 truncate text-shopee-black54 font-extralight text-sp10"]').text
-            except:
-                location = ""
-            try:
-                img = li.find_element(By.XPATH, './/img[@class="inset-y-0 w-full h-full pointer-events-none object-contain absolute"]').get_attribute("src")
-            except:
-                img = ""
-            products.append({
-                "link": link,
-                "name": name,
-                "price": price,
-                "rating": rating,
-                "img": img,
-                "location": location
-            })
+
+            for idx, li in enumerate(items):
+                if len(products) >= self.num_products:
+                    return products
+
+                try:
+                    link = li.find_element(By.XPATH, './/a[@class="contents"]').get_attribute("href")
+                except:
+                    link = ""
+
+                if link and link in self.scraped_links:
+                    logging.info(f"Skipping already scraped product: {link}")
+                    continue
+
+                try:
+                    name_elem = li.find_element(By.XPATH, './/div[contains(@class, "line-clamp-2")]')
+                    name = driver.execute_script("return arguments[0].textContent;", name_elem).strip()
+                except:
+                    name = ""
+                try:
+                    price = li.find_element(By.XPATH, './/div[@class="truncate flex items-baseline"]').text
+                except:
+                    price = ""
+                try:
+                    rating = li.find_element(By.XPATH, './/div[@class="text-shopee-black87 text-xs/sp14 flex-none"]').text
+                except:
+                    rating = ""
+                try:
+                    location = li.find_element(By.XPATH, './/div[@class="flex-shrink min-w-0 truncate text-shopee-black54 font-extralight text-sp10"]').text
+                except:
+                    location = ""
+                try:
+                    img = li.find_element(By.XPATH, './/img[@class="inset-y-0 w-full h-full pointer-events-none object-contain absolute"]').get_attribute("src")
+                except:
+                    img = ""
+
+                products.append({
+                    "link": link,
+                    "name": name,
+                    "price": price,
+                    "rating": rating,
+                    "img": img,
+                    "location": location
+                })
+
+            logging.info(f"Page {page+1} scraped, total products so far: {len(products)}")
+
+            import random
+            time.sleep(random.uniform(3.0, 7.0))
         return products
 
     def _parse_star_count(self, text):
@@ -147,11 +182,14 @@ class ProductScraper:
     def _get_product_details(self, driver, product):
         driver.get(product["link"])
         driver.implicitly_wait(3)
-        try:
-            cat_xpath = '//*[@id="sll2-normal-pdp-main"]/div/div[1]/div/div[2]/div[2]/div/div[1]/div[1]/section[1]/div'
-            product["category"] = driver.find_element(By.XPATH, cat_xpath).text
-        except:
-            product["category"] = ""
+        if self.category_info:
+            product["category"] = self.category_info
+        else:
+            try:
+                cat_xpath = '//*[@id="sll2-normal-pdp-main"]/div/div[1]/div/div[2]/div[2]/div/div[1]/div[1]/section[1]/div'
+                product["category"] = driver.find_element(By.XPATH, cat_xpath).text
+            except:
+                product["category"] = ""
         try:
             desc_xpath = '//*[@id="sll2-normal-pdp-main"]/div/div[1]/div/div[2]/div[2]/div/div[1]/div[1]/section[2]/div/div'
             product["description"] = driver.find_element(By.XPATH, desc_xpath).text
@@ -204,7 +242,7 @@ class ProductScraper:
                             all_reviews += self._get_reviews(driver, min(star_count, self.star_limit_per_type))
                 product["comments"] = all_reviews
             except Exception as e:
-                logging.warning(f"Unable to collect star-based reviews: {e}")
+                pass
         else:
             all_reviews = self._get_reviews(driver, min(product["total_rating"], self.review_limit))
             product["comments"] = all_reviews
@@ -297,16 +335,15 @@ class ProductScraper:
             try:
                 if not self.index_only:
                     self._get_product_details(driver, prod)
+                else:
+                    if self.category_info:
+                        prod["category"] = self.category_info
                 all_products.append(prod)
-                
                 if prod.get('link'):
                     self.scraped_links.add(prod['link'])
-                
                 if idx % 5 == 0:
                     self._periodic_save(all_products)
-                    
             except Exception as e:
-                logging.error(f"Error processing product {prod.get('name', 'Unknown')}: {e}")
                 self._periodic_save(all_products)
         
         driver.quit()

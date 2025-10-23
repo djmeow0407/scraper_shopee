@@ -107,6 +107,10 @@ Each review contains:
 To find the correct Shopee category ID for the `-c`/`--category` option, visit:
 👉 [https://banhang.shopee.vn/edu/category-guide](https://banhang.shopee.vn/edu/category-guide)
 
+
+Or find it in 'shopee_categories.csv'
+
+
 Search or browse for your desired category and copy the corresponding ID from the table.
 
 ---
