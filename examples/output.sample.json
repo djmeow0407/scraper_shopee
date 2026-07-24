@@ -1,0 +1,66 @@
+{
+  "product": {
+    "id": "201416673_20429274639",
+    "url": "https://shopee.vn/K%E1%BA%B9o-v%E1%BB%ABng-cao-c%E1%BA%A5p-B%E1%BA%A3o-Minh-th%C6%A1m-ngon-%C4%91%E1%BA%B7c-bi%E1%BB%87t-250gr-i.201416673.20429274639",
+    "name": "Kẹo vừng cao cấp Bảo Minh thơm ngon đặc biệt 250gr",
+    "price": {
+      "value": 58000,
+      "currency": "VND",
+      "raw": "58.000 ₫"
+    },
+    "stock_status": "CÒN HÀNG",
+    "category": [
+      "Shopee",
+      "Bách Hóa Online",
+      "Đồ ăn vặt",
+      "Kẹo"
+    ],
+    "brand": "Bảo Minh",
+    "weight": {
+      "value": 250,
+      "unit": "g"
+    },
+    "origin": "Việt Nam",
+    "shelf_life_months": 6,
+    "ship_from": "Hà Nội"
+  },
+  "description": {
+    "summary": "Kẹo vừng Bảo Minh được làm từ vừng, đường kính, mạch nha. Ít ngọt, bùi, xốp.",
+    "manufacturer": "Công ty CP Bánh mứt kẹo Bảo Minh",
+    "hashtags": [
+      "banhkeobaominh",
+      "banhkeotruyenthong",
+      "dacsanhanoi",
+      "keovung",
+      "keolac",
+      "chelam"
+    ],
+    "raw_text": "CHI TIẾT SẢN PHẨM ... banhcomhanoi"
+  },
+  "reviews": [
+    {
+      "username": "dung_gin",
+      "rating": 5,
+      "review_time": "2025-02-08T09:51:00",
+      "attributes": {
+        "flavor": "ngon"
+      },
+      "content": "Mình vào Sài Gòn thăm họ hàng mà hành lý quá kí nên phải đặt quà vào sau =.))) giáp Tết mà may quá shop giao đúng hạn, bánh rất ngon, chuẩn Hà Nội",
+      "seller_response": {
+        "content": "Shop đã nhận được phản hồi từ bạn! Rất cảm ơn bạn đã tin tưởng đặt sản phẩm của Shop mình và dành thời gian đánh giá sản phẩm. Hy vọng bạn sẽ luôn ủng hộ Shop trong những lần sau nhé!",
+        "responded": true
+      },
+      "helpful_votes": 1
+    }
+  ],
+  "shop": {
+    "name": "Bánh kẹo Bảo Minh",
+    "url": "https://shopee.vn/banhkeobaominhchgtsp",
+    "platform": "Shopee"
+  },
+  "meta": {
+    "scraped_at": "2026-01-27T10:31:04",
+    "source": "Shopee",
+    "language": "vi"
+  }
+}

@@ -20,3 +20,4 @@ shopee_categories_temp.csv
 
 # OS
 .DS_Store
+.venv-dev/

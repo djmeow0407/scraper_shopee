@@ -1,4 +1,0 @@
-undetected-chromedriver
-selenium
-tqdm
-setuptools
