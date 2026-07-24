@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# Scraper output
+out/
+*.json
+!examples/*.json
+shopee_categories_temp.csv
+
+# OS
+.DS_Store
