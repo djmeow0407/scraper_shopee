@@ -1,19 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 import logging
 import random
-import time
 from pathlib import Path
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-
 from . import selectors as sel
+from .browser import browser_session, goto, select_all, select_first
 from .config import Settings
 from .console import console
-from .driver import chrome_session, find_all, find_first
 from .models import CategoryInfo
 
 log = logging.getLogger(__name__)
@@ -58,42 +54,39 @@ class CategoryIndex:
         return cls(rows)
 
 
-def _scrape_page(driver) -> list[dict[str, str]]:
+async def _scrape_page(tab) -> list[dict[str, str]]:
     out = []
-    for row in find_all(driver, sel.CATEGORY_ROW):
-        cols = row.find_elements(By.TAG_NAME, "td")
+    for row in await select_all(tab, sel.CATEGORY_ROW):
+        cols = await select_all(row, ["td"])
         if len(cols) < len(CSV_FIELDS):
             continue
-        out.append({field: cols[i].text.strip() for i, field in enumerate(CSV_FIELDS)})
+        out.append({field: (cols[i].text or "").strip() for i, field in enumerate(CSV_FIELDS)})
     return out
 
 
-def scrape_categories(settings: Settings, out_path: Path) -> int:
+async def scrape_categories(settings: Settings, out_path: Path) -> int:
     """Cào toàn bộ bảng ngành hàng của Shopee ra CSV. Trả về số dòng."""
     rows: list[dict[str, str]] = []
 
-    with chrome_session(settings) as driver:
-        driver.get(CATEGORY_GUIDE_URL)
-        wait = WebDriverWait(driver, 20)
-        wait.until(EC.presence_of_element_located(sel.CATEGORY_ROW[0]))
+    async with browser_session(settings) as (_browser, tab):
+        await goto(tab, CATEGORY_GUIDE_URL, settings)
 
         page = 1
         while True:
-            rows.extend(_scrape_page(driver))
+            rows.extend(await _scrape_page(tab))
             console.print(f"  trang {page}: tổng {len(rows)} dòng")
 
-            button = find_first(driver, sel.CATEGORY_NEXT_PAGE)
+            button, _ = await select_first(tab, sel.CATEGORY_NEXT_PAGE)
             if button is None:
                 break
-            classes = button.get_attribute("class") or ""
-            if not button.is_enabled() or "disabled" in classes:
+            classes = (button.attrs.get("class") if button.attrs else "") or ""
+            if "disabled" in classes or "disabled" in (button.attrs or {}):
                 break
 
-            driver.execute_script("arguments[0].scrollIntoView(true);", button)
-            time.sleep(0.5)
-            button.click()
-            time.sleep(random.uniform(1.5, 3.0))
-            wait.until(EC.presence_of_element_located(sel.CATEGORY_ROW[0]))
+            await button.scroll_into_view()
+            await asyncio.sleep(0.5)
+            await button.click()
+            await asyncio.sleep(random.uniform(1.5, 3.0))
             page += 1
 
     if not rows:

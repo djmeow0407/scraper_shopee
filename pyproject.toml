@@ -4,23 +4,20 @@ build-backend = "hatchling.build"
 
 [project]
 name = "shopee-scraper"
-version = "0.2.0"
+version = "0.3.0"
 description = "Thu thập sản phẩm và đánh giá từ Shopee.vn, xuất ra JSON có cấu trúc cho pipeline ABSA"
 readme = "README.md"
-requires-python = ">=3.11"
+# nodriver sinh file CDP có byte non-UTF-8 mà Python 3.14 từ chối biên dịch.
+requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
 authors = [{ name = "Ton Dai Quoc" }]
-keywords = ["shopee", "scraper", "selenium", "vietnamese", "absa"]
+keywords = ["shopee", "scraper", "nodriver", "vietnamese", "absa"]
 
 dependencies = [
     "typer>=0.12",
     "pydantic>=2.6",
     "rich>=13.7",
-    "selenium>=4.20",
-    "undetected-chromedriver>=3.5",
-    # undetected-chromedriver còn import distutils, thứ đã bị gỡ khỏi Python 3.12.
-    # setuptools cung cấp bản thay thế qua distutils-precedence.pth.
-    "setuptools>=69; python_version >= '3.12'",
+    "nodriver>=0.50",
 ]
 
 [project.optional-dependencies]

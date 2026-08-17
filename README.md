@@ -5,7 +5,9 @@ thẳng vào pipeline phân tích cảm xúc theo khía cạnh (ABSA).
 
 ## Cài đặt
 
-Cần Python ≥ 3.11 và Google Chrome.
+Cần Python 3.11–3.13 và một trình duyệt Chromium (mặc định dò `brave-origin`,
+rồi Brave/Chrome/Chromium). nodriver điều khiển trình duyệt qua CDP, không cần
+webdriver binary.
 
 ```bash
 python -m venv .venv
@@ -118,19 +120,29 @@ Mỗi file là một mảng bản ghi. Xem `examples/output.sample.json` cho b�
     }
   ],
   "shop": { "name": "...", "url": "...", "platform": "Shopee" },
-  "meta": { "scraped_at": "...", "scraper_version": "0.2.0", "warnings": [] }
+  "meta": { "scraped_at": "...", "scraper_version": "0.3.0", "warnings": [] }
 }
 ```
 
-`meta.warnings` liệt kê phần bị thiếu (`name-not-found`, `description-empty`,
-`no-reviews`, ...). Nếu thấy nhiều bản ghi cùng một warning thì gần như chắc chắn
-Shopee đã đổi giao diện — sửa `src/shopee_scraper/selectors.py`.
+`meta.warnings` liệt kê bất thường của bản ghi (`name-missing`,
+`price-zero-suspicious`, `price-missing`, `reviews-empty-despite-ratings`,
+`category-missing`). Cuối mỗi lần chạy còn có bảng sức khỏe selector và file
+`*.report.json` cạnh output; nếu một field bị gắn `selector-dead`/`selector-degraded`
+thì Shopee đã đổi DOM — sửa `src/shopee_scraper/selectors.py`.
 
-## Captcha
+## Captcha & đăng nhập
 
-Tool chạy Chrome thật, không headless mặc định. Khi Shopee bắt captcha hoặc đăng
-nhập, terminal sẽ dừng và nhắc: giải thủ công trên cửa sổ Chrome rồi quay lại
-nhấn Enter. Bị chặn liên tục thì tăng `delay_min`/`delay_max`.
+Tool mở trình duyệt thật, không headless mặc định. Khi Shopee bắt captcha hoặc
+đăng nhập, terminal dừng và nhắc: giải thủ công trên cửa sổ trình duyệt rồi quay
+lại nhấn Enter. Bị chặn liên tục thì tăng `delay_min`/`delay_max`.
+
+Trỏ `user_data_dir` vào một profile cố định để đăng nhập QR **một lần**; các lần
+sau cookie còn nên bỏ qua được màn traffic/login:
+
+```toml
+[scraper]
+user_data_dir = "~/.local/share/shopee-scraper/brave-profile"
+```
 
 ## Cấu trúc
 
@@ -140,14 +152,17 @@ src/shopee_scraper/
 ├── config.py         # Settings, ghép TOML + env + CLI
 ├── models.py         # schema pydantic của đầu ra
 ├── selectors.py      # toàn bộ selector Shopee, mỗi cái là danh sách ứng viên
-├── driver.py         # vòng đời Chrome, chống phát hiện, xử lý captcha
+├── browser.py        # phiên nodriver: điều hướng, tìm phần tử, xử lý captcha
+├── extraction.py     # theo dõi selector nào khớp primary/fallback/miss
+├── quality.py        # kiểm tra chéo bản ghi, sinh meta.warnings
+├── report.py         # gộp số liệu một lần chạy + ghi *.report.json
 ├── storage.py        # ghi JSON nguyên tử + resume
 ├── categories.py     # tra cứu và cào bảng ngành hàng
-├── parsers/          # bóc text -> model, không đụng Selenium
+├── parsers/          # bóc text -> model, không đụng trình duyệt
 └── scrapers/         # base + ba chế độ crawl
 ```
 
-Toàn bộ logic bóc tách nằm trong `parsers/`, không import Selenium, nên test được
+Toàn bộ logic bóc tách nằm trong `parsers/`, không import nodriver, nên test được
 bằng fixture text:
 
 ```bash
@@ -176,11 +191,18 @@ Gộp bản `retriv_data.py` đơn khối trên GitHub với bản refactor `bas
 
 - `--category` giờ giữ `facet` ở mọi trang; bản cũ dựng lại URL không có facet từ
   trang thứ hai nên bộ lọc mất tác dụng.
-- Phiên bản Chrome tự dò thay vì hardcode `version_main=144`.
 - Đánh giá bóc theo cấu trúc text thay vì bám chuỗi style inline dài.
 - Ghi file nguyên tử (tmp + rename), không còn nguy cơ mất dữ liệu khi Ctrl-C
   giữa lúc ghi.
 - Tên/giá sản phẩm có dự phòng qua thẻ `og:` khi class bị hash đổi.
+
+## v0.3
+
+- Đổi từ undetected-chromedriver/Selenium sang **nodriver** (async, điều khiển
+  trực tiếp qua CDP), trình duyệt tự dò không cần webdriver binary.
+- Thêm tầng quan sát: `extraction.py` theo dõi selector khớp primary/fallback/miss,
+  `quality.py` kiểm tra chéo bản ghi, cuối mỗi lần chạy in bảng cảnh báo và ghi
+  `*.report.json` — DOM đổi thì thấy ngay thay vì lặng lẽ trả rỗng.
 
 Thay đổi cần biết khi chuyển sang v0.2:
 

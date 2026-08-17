@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -57,3 +59,24 @@ def test_resolve_output_creates_dir(tmp_path):
     settings = Settings(output_dir=tmp_path / "out")
     path = settings.resolve_output("a.json")
     assert path.parent.is_dir()
+
+
+def test_browser_path_accepts_path(tmp_path):
+    exe = tmp_path / "brave"
+    exe.touch()
+    settings = Settings(browser_path=exe)
+    assert settings.browser_path == str(exe)
+    assert settings.resolve_browser() == str(exe)
+
+
+def test_resolve_browser_falls_back_to_candidates(monkeypatch):
+    fake = "/opt/fake-brave"
+    monkeypatch.setattr("shopee_scraper.config.BROWSER_CANDIDATES", [fake])
+    monkeypatch.setattr(Path, "exists", lambda self: str(self) == fake)
+    assert Settings().resolve_browser() == fake
+
+
+def test_resolve_browser_raises_when_none_found(monkeypatch):
+    monkeypatch.setattr("shopee_scraper.config.BROWSER_CANDIDATES", [])
+    with pytest.raises(FileNotFoundError):
+        Settings().resolve_browser()

@@ -1,12 +1,14 @@
 # Đổi tên thành shopee.config.toml để dùng. Tham số CLI luôn thắng file này.
 
 [scraper]
-# Trình duyệt
+# Trình duyệt (bỏ trống browser_path để tự dò brave-origin/brave/chrome)
 headless = false
-# chrome_version = 144      # bỏ trống để tự dò từ Chrome đã cài
-page_load_timeout = 30
-window_size = "1920,1080"
-# user_data_dir = "/home/ban/.config/shopee-profile"   # giữ phiên đăng nhập
+# browser_path = "/usr/bin/brave-origin"
+# no_sandbox = true
+# lang = "vi-VN"
+# user_data_dir = "/home/ban/.local/share/shopee-scraper/brave-profile"  # đăng nhập một lần
+page_load_wait = 4.0
+page_retries = 1
 
 # Tiết chế tốc độ, tăng lên nếu hay dính captcha
 delay_min = 3.0

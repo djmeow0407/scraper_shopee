@@ -4,13 +4,11 @@ import logging
 import re
 from urllib.parse import quote
 
-from selenium.common.exceptions import WebDriverException
-from selenium.webdriver.remote.webdriver import WebDriver
-
 from .. import selectors as sel
-from ..driver import attr_of, chrome_session, find_all, find_first, goto, polite_sleep, text_of
+from ..browser import browser_session, goto, polite_sleep, select_all, select_first
 from ..models import ProductInfo, ProductListing, ProductRecord
 from ..parsers import parse_price
+from ..report import RunReport
 from ..storage import JsonStore
 from .base import PRODUCT_ID, BaseScraper, ReviewMode
 
@@ -43,19 +41,17 @@ class SearchScraper(BaseScraper):
             params.insert(0, f"facet={self.category}")
         return "https://shopee.vn/search?" + "&".join(params)
 
-    def collect_listings(self, driver: WebDriver) -> list[ProductListing]:
+    async def collect_listings(self, tab) -> list[ProductListing]:
         listings: list[ProductListing] = []
         pages = -(-self.num_products // PRODUCTS_PER_PAGE)
 
         for page in range(pages):
             url = self.search_url(page)
             log.info("Trang %d/%d: %s", page + 1, pages, url)
-            goto(driver, url, wait=4)
+            await goto(tab, url, self.settings)
 
-            container = find_first(driver, sel.SEARCH_RESULT_LIST)
-            items = find_all(container, sel.SEARCH_RESULT_ITEM) if container is not None else []
-            if not items:
-                items = find_all(driver, sel.SEARCH_RESULT_ITEM)
+            container, _ = await select_first(tab, sel.SEARCH_RESULT_LIST)
+            items = await select_all(container or tab, sel.SEARCH_RESULT_ITEM)
             if not items:
                 log.warning("Trang %d không có sản phẩm nào, bỏ qua", page + 1)
                 continue
@@ -63,37 +59,36 @@ class SearchScraper(BaseScraper):
             for item in items:
                 if len(listings) >= self.num_products:
                     return listings
-                listing = self._read_listing(item)
+                listing = await self._read_listing(item)
                 if listing is not None:
                     listings.append(listing)
 
             log.info("Trang %d xong, tổng %d sản phẩm", page + 1, len(listings))
-            polite_sleep(self.settings)
+            await polite_sleep(self.settings)
 
         return listings
 
-    def _read_listing(self, item) -> ProductListing | None:
-        try:
-            url = attr_of(item, sel.LISTING_LINK, "href")
-        except WebDriverException:
-            return None
+    async def _read_listing(self, item) -> ProductListing | None:
+        url = await self.fields.attr(item, "listing_link", sel.LISTING_LINK, "href")
         if not url:
             return None
-
         return ProductListing(
             url=url,
-            name=text_of(item, sel.LISTING_NAME, "Unknown"),
-            price=text_of(item, sel.LISTING_PRICE, "0"),
-            image=attr_of(item, sel.LISTING_IMAGE, "src"),
-            rating=text_of(item, sel.LISTING_RATING),
-            location=text_of(item, sel.LISTING_LOCATION),
+            name=await self.fields.text(item, "listing_name", sel.LISTING_NAME, "Unknown"),
+            price=await self.fields.text(item, "listing_price", sel.LISTING_PRICE, "0"),
+            image=await self.fields.attr(item, "listing_image", sel.LISTING_IMAGE, "src"),
+            rating=await self.fields.text(item, "listing_rating", sel.LISTING_RATING),
+            location=await self.fields.text(item, "listing_location", sel.LISTING_LOCATION),
         )
 
-    def run(self, review_limit: int | None = None, mode: ReviewMode = ReviewMode.recent) -> JsonStore:
+    async def run(
+        self, review_limit: int | None = None, mode: ReviewMode = ReviewMode.recent
+    ) -> tuple[JsonStore, RunReport]:
         store = JsonStore(self.settings.resolve_output(self.output_file))
+        run_report = RunReport(self.report)
 
-        with chrome_session(self.settings) as driver:
-            listings = self.collect_listings(driver)
+        async with browser_session(self.settings) as (_browser, tab):
+            listings = await self.collect_listings(tab)
             todo = [item for item in listings if not store.has(item.url)]
             log.info("Tìm được %d sản phẩm, %d cái chưa crawl", len(listings), len(todo))
 
@@ -102,19 +97,19 @@ class SearchScraper(BaseScraper):
                     if self.index_only:
                         record = self._listing_only(listing)
                     else:
-                        record = self.scrape_product(
-                            driver, listing.url, listing=listing,
-                            review_limit=review_limit, mode=mode,
-                            category_code=self.category,
+                        record = await self.scrape_product(
+                            tab, listing.url, listing=listing, review_limit=review_limit,
+                            mode=mode, category_code=self.category,
                         )
                     store.add(record)
-                except WebDriverException as e:
+                    run_report.observe(record)
+                except Exception as e:
                     log.error("Lỗi ở %s: %s", listing.url, e)
                 if index % self.settings.save_every == 0:
                     store.save()
 
         store.save()
-        return store
+        return store, run_report
 
     def _listing_only(self, listing: ProductListing) -> ProductRecord:
         match = PRODUCT_ID.search(listing.url)

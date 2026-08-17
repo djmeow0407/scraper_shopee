@@ -23,9 +23,9 @@ def setup_logging(verbose: bool = False) -> None:
         datefmt="[%X]",
         handlers=[RichHandler(console=console, rich_tracebacks=True, show_path=verbose)],
     )
-    # undetected_chromedriver log rác mỗi lần đóng driver.
-    logging.getLogger("undetected_chromedriver").setLevel(logging.CRITICAL)
-    logging.getLogger("selenium").setLevel(logging.WARNING)
+    # nodriver log CDP rất ồn khi không debug.
+    logging.getLogger("nodriver").setLevel(logging.WARNING if verbose else logging.ERROR)
+    logging.getLogger("uc").setLevel(logging.WARNING if verbose else logging.ERROR)
 
 
 def progress() -> Progress:

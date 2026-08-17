@@ -18,6 +18,9 @@ out/
 !examples/*.json
 shopee_categories_temp.csv
 
+# Cấu hình cục bộ (chứa đường dẫn máy); chỉ commit bản .example
+shopee.config.toml
+
 # OS
 .DS_Store
 .venv-dev/
