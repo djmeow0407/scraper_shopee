@@ -38,7 +38,8 @@ LISTING_IMAGE: list[Selector] = ["img[class*='object-contain']", "img"]
 
 PRODUCT_NAME: list[Selector] = ["h1", "div[class*='product-brief-name']", "span[aria-label]"]
 PRODUCT_PRICE: list[Selector] = [
-    "section[aria-live='polite'] div[class*='pqTWkA']",
+    "[aria-live] div[class*='pw3J3G']",
+    "[aria-live]",
     "div[class*='pqTWkA']",
 ]
 PRODUCT_IMAGE: list[Selector] = ["picture img", "div[class*='airUxs'] img"]

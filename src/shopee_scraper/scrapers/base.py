@@ -212,6 +212,9 @@ class BaseScraper:
         price_text = listing.price if listing else ""
         if not price_text or price_text == "0":
             price_text = await self.fields.text(tab, "product_price", sel.PRODUCT_PRICE)
+        # Class giá bị hash đổi liên tục; JSON-LD Product.offers là nguồn ổn định.
+        if not price_text or price_text == "0":
+            price_text = await self._ld_price(tab)
 
         image = listing.image if listing else ""
         if not image:
@@ -269,6 +272,27 @@ class BaseScraper:
             rating=listing.rating if listing else "",
             location=listing.location if listing else "",
         )
+
+    @staticmethod
+    async def _ld_price(tab) -> str:
+        js = r"""
+        (() => {
+          for (const s of document.querySelectorAll('script[type="application/ld+json"]')) {
+            let j; try { j = JSON.parse(s.textContent); } catch (e) { continue; }
+            for (const node of (Array.isArray(j) ? j : [j])) {
+              if (node['@type'] !== 'Product' || !node.offers) continue;
+              const off = Array.isArray(node.offers) ? node.offers[0] : node.offers;
+              const p = off.price || off.lowPrice;
+              if (p) return String(p);
+            }
+          }
+          return '';
+        })()
+        """
+        try:
+            return (await tab.evaluate(js)) or ""
+        except Exception:
+            return ""
 
     @staticmethod
     async def _meta(tab, prop: str) -> str:
